@@ -23,10 +23,12 @@ margins = margins[margins > 0]
 histogram = np.histogram(margins, bins=range(0, 73), density=True)
 
 
-def chance_of_winning(original_line, current_line, debug=False):
+def chance_of_winning_aux(original_line, current_line, debug=False):
     if current_line < 0:
         current_line *= -1
         original_line *= -1
+    if current_line == 0.5:
+        current_line = 0
     if current_line not in ats_margins:
         print str(current_line) + " not found"
         return 0.5
@@ -55,6 +57,10 @@ def chance_of_winning(original_line, current_line, debug=False):
     return one_side_win_percent + extra_win_percent
 
 
+def chance_of_winning(original_line, current_line, debug=False):
+    return (chance_of_winning_aux(original_line, current_line, debug) + chance_of_winning_aux(current_line, original_line, debug))/2.0
+
+
 def get_percentage(pick1, pick2):
     #pick1, pick2 = abs(pick1), abs(pick2)
     if pick2 < pick1:
@@ -71,13 +77,13 @@ def get_percentage(pick1, pick2):
     return total_percentage
 
 
-def main():
+def main(week):
     spreads_url = 'http://www.vegasinsider.com/college-football/odds/las-vegas/'
-    season = 2
-    week = 6
+    season = 3
     row_start = 1
     num_rows = 151
-    picks_filename = "/Users/ben.packer/other/fantasy/picks/season%d_week%d_picks.html" % (season, week)
+    #picks_filename = "/Users/ben.packer/other/fantasy/picks/season%d_week%d_picks.html" % (season, week)
+    picks_filename = "/Users/ben.packer/other/fantasy/picks/season%d_week%d_picks.htm" % (season, week)
     team_name_filename = "var/cache/team_names.csv"
 
     spreads = {}
@@ -137,13 +143,15 @@ def main():
             team_name = team_names[team_name]
         else:
             team_name = re.sub("State", "St.", team_name, 1)
-        print "Checking team %s" % team_name
+        #print "Checking team %s" % team_name
         try:
-            pick_spread = float(re.search("(>|\d )%s \(.*\) ([\+\-]\d+\.5)" % team_name, picks_html, flags=re.I).group(2))
+            #pick_spread = float(re.search("(>|\d )%s \(.*\) <SPAN CLASS=\"SPREAD\">([\+\-]\d+\.5)" % team_name, picks_html, flags=re.I).group(2))
+            pick_spread = float(re.search("(>|\d )%s \(.*\) <span class='SPREAD'>([\+\-]\d+\.5)" % team_name, picks_html, flags=re.I).group(2))
             #differences[team_name] = [vegas_spread - pick_spread, get_percentage(vegas_spread, pick_spread), pick_spread]
             differences[team_name] = [vegas_spread - pick_spread, chance_of_winning(pick_spread, vegas_spread), pick_spread]
+            #print "Got it"
         except AttributeError:
-            #print "Skipping"
+            print "Couldn't find " + team_name
             continue
 
         #if pick_spread != vegas_spread:
@@ -169,4 +177,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         print chance_of_winning(float(sys.argv[2]), float(sys.argv[3]), debug=True)
     else:
-        main()
+        week = int(sys.argv[1])
+        main(week)
